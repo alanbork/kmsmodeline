@@ -1,6 +1,8 @@
+This is a simple example of doing graphics without X11 on the pi4. it is a simplied version of the well known triangle[_rpi4].c with some additional improvements for robustness. 
+
 ## Raspberry Pi 4
 
-Raspberry Pi 4, at the moment of writing this, has a limited KMS driver, and a buggy "fake" kms driver. This is because the GPU is different from the previous ones. Instead of using the `vc` libraries, you will need to use the DRM/GBM.
+The raspberry Pi 4, at the moment of writing this, has a limited KMS driver, and a buggy "fake" kms driver. This is because the GPU is different from the previous ones. Instead of using the `vc` libraries, you will need to use the DRM/GBM.
 
 **What do I need?**
 
