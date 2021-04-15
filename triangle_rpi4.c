@@ -67,7 +67,7 @@ static int getDisplay(EGLDisplay *display)
     }
 
     connectorId = connector->connector_id;
-    mode = connector->modes[0];
+    mode = connector->modes[0]; // array of resolutions and refresh rates supported by this display
     printf("resolution: %ix%i\n", mode.hdisplay, mode.vdisplay);
 
     drmModeEncoder *encoder = findEncoder(connector);
@@ -391,33 +391,9 @@ int main()
     glDrawArrays(GL_TRIANGLES, 0, 3);
 
     // Depending on your application, you might need to swap the buffers.
-    // If you only want to render to an image file (as shown below) then this is not necessary.
-    // But if you want to show the OpenGL render on a screen through HDMI, you might need it.
+    // at the moment it seems to work fine without it.
     // gbmSwapBuffers(&display, &surface);
 
-    // Create buffer to hold entire front buffer pixels
-    // We multiply width and height by 3 to because we use RGB!
-    unsigned char *buffer =
-        (unsigned char *)malloc(desiredWidth * desiredHeight * 3);
-
-    // Copy entire screen
-    glReadPixels(0, 0, desiredWidth, desiredHeight, GL_RGB, GL_UNSIGNED_BYTE,
-                 buffer);
-
-    // Write all pixels to a file
-    FILE *output = fopen("triangle.raw", "wb");
-    if (output)
-    {
-        fwrite(buffer, 1, desiredWidth * desiredHeight * 3, output);
-        fclose(output);
-    }
-    else
-    {
-        fprintf(stderr, "Failed to open file triangle.raw for writing!\n");
-    }
-
-    // Free copied pixels
-    free(buffer);
 
     // Cleanup
     eglDestroyContext(display, context);
