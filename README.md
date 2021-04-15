@@ -37,12 +37,13 @@ To run the executable, type the following:
 You should see the following output:
 
 ```
-resolution: 1366x768
+/dev/dri/card0 not supporting DRM, trying card1, resolution: 3840x2160
 Initialized EGL version: 1.4
-GL Viewport size: 1366x768
+GL Viewport size: 3840x2160
+
 ```
 
-At the same time, a new file should be created: `output.raw`. This file contains raw 1366x768 RGB pixels. You can use Photoshop or any other software to import and view this file. You should be able to see the following purple triangle. Please note that the image is mirrored vertically as the pixel coordinates in OpenGL start from the bottom, not from the top. Example of the image:
+The program will briefly show the following full screen:
 
 ![Screenshot of a purple triangle](output.png "Screenshot of a purple triangle")
 
