@@ -1,3 +1,5 @@
+// gcc -o triangle_rpi4 triangle_rpi4.c -ldrm -lgbm -lEGL -lGLESv2 -I/usr/include/libdrm -I/usr/include/GLES2
+
 #include <xf86drm.h>
 #include <xf86drmMode.h>
 #include <gbm.h>
@@ -7,6 +9,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdio.h>
+// super simple stand-alone example of using DRM/GBM+EGL without X11 on the pi4
 
 // The following code related to DRM/GBM was adapted from the following sources:
 // https://github.com/eyelash/tutorials/blob/master/drm-gbm.c
@@ -14,6 +17,7 @@
 // https://www.raspberrypi.org/forums/viewtopic.php?t=243707#p1499181
 //
 // I am not the original author of this code, I have only modified it.
+
 int device;
 drmModeModeInfo mode;
 struct gbm_device *gbmDevice;
@@ -230,9 +234,16 @@ static const char *eglGetErrorStr()
 int main()
 {
     EGLDisplay display;
-    // You can try chaning this to "card0" if "card1" does not work.
-    device = open("/dev/dri/card1", O_RDWR | O_CLOEXEC);
-    if (getDisplay(&display) != 0)
+    // we have to try card0 and card1 to see which is valid. fopen will work on both, so...
+    device = open("/dev/dri/card0", O_RDWR | O_CLOEXEC);
+    
+    if (drmModeGetResources(device) == null) // if we have the right device we can get it's resources
+        {
+        printf("/dev/dri/card0 not supporting DRM, trying card1");
+        device = open("/dev/dri/card1", O_RDWR | O_CLOEXEC); // if not, try the other one: (1)
+        }
+    
+    if (getDisplay(&display) != 0) // also tests drmModeGetResources
     {
         fprintf(stderr, "Unable to get EGL display\n");
         close(device);
