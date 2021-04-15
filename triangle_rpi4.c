@@ -387,14 +387,14 @@ int main()
     glVertexAttribPointer(posLoc, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float),
                           (void *)0);
 
-    // Render a triangle consisting of 3 vertices:
+    // Render a triangle consisting of 3 vertices to the back buffer
     glDrawArrays(GL_TRIANGLES, 0, 3);
 
-    // Depending on your application, you might need to swap the buffers.
-    // at the moment it seems to work fine without it.
-    // gbmSwapBuffers(&display, &surface);
+    // in order to display what you drew you need to swap the back and front buffers.
+    gbmSwapBuffers(&display, &surface);
 
-
+    sleep(5); // pause for a moment so that you can see it worked before returning to command line
+   
     // Cleanup
     eglDestroyContext(display, context);
     eglDestroySurface(display, surface);
