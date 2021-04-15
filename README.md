@@ -1,59 +1,6 @@
-# Raspberry Pi OpenGL ES 2 without an X server (using EGL)
-
-Have you ever wanted to render things with headless (no screen) Raspberry Pi? Then this is something you might be interested in! 
-
-The following file `triangle.c` contains an example that renders a triangle and saves it into a `output.raw` file. The example uses EGL to create a pixel buffer as a surface. Normally, when using X server, you would create a window surface, but in here we do not do that at all. This example also uses OpenGL ES 2 to setup a very simple shader to render a triangle.
-
-The `triangle.c` contains comments which should explain you all the necessary parts. Please note that this example will not teach you fundamentals of OpenGL! The purpose of this file is solely to demonstrate creating an OpenGL ES 2 context and getting the raw pixel output without using any virtual Linux framebuffers or physical screen (no X server).
-
-## Which Raspberry Pi works?
-
-* Raspberry Pi 1 (tested and works)
-* Raspberry Pi 2 (tested and works)
-* Raspberry Pi 3 (tested and works)
-* Raspberry Pi 4 (tested and works, ~~but won't work in headless mode, you need a HDMI output~~ works just fine in the headless mode, no longer true, see issue [#11](https://github.com/matusnovak/rpi-opengl-without-x/issues/11))
-
-## Raspberry Pi 1,2,3
-
-*For the Raspberry Pi 4 instructions see the next section*
-
-**What do I need?**
-
-You need a GCC compiler, EGL, and GLES libraries. If you are using the latest Raspbian distro, all those are already located on the image, no extra `apt-get` needed. You can check if you have the GCC installed by executing `gcc --version`. You can also check if the GLES and EGL are installed by executing `ls /opt/vc/lib` which should list `libbrcmEGL.so` and `libbrcmGLESv2.so`. They are all already included in the Jessie/Stretch/Buster Raspbian! If you don't have `libbrcmEGL.so`, you will have to use the `libEGL.so` instead, which is located in the same folder.
-
-**The problem of mesa apt package**
-
-The following packages `mesa-common-dev` and `mesa-utils` **do NOT work** and instead they may break EGL on your OS. The libraries installed through any of the `mesa` packages will install incompatible version of the EGL, most likely into the `/lib/arm-linux-gnueabihf` folder. Don't use these! Use the ones provided by the official Raspbian OS image in the `/opt/vc/lib` folder!
-
-**How do I try it?**
-
-Copy or download the `triangle.c` file onto your Raspberry Pi. Use the following commands to compile the source file:
-
-```
-gcc -c triangle.c -o triangle.o -I/opt/vc/include
-gcc -o triangle triangle.o -lbrcmEGL -lbrcmGLESv2 -L/opt/vc/lib
-```
-
-To run the executable, type the following:
-
-```
-./triangle
-```
-
-You should see the following output:
-
-```
-Initialized EGL version: 1.4
-GL Viewport size: 800x600
-```
-
-At the same time, a new file should be created: `output.raw`. This file contains raw 800x600 RGB pixels. You can use Photoshop or any other software to import and view this file. You should be able to see the following purple triangle. Please note that the image is mirrored vertically as the pixel coordinates in OpenGL start from the bottom, not from the top. Example of the image:
-
-![Screenshot of a purple triangle](output.png "Screenshot of a purple triangle")
-
 ## Raspberry Pi 4
 
-Raspberry Pi 4, at the moment of writing this, has no full KMS driver, because the GPU is different from the previous ones. Instead of using the `vc` libraries, you will need to use the DRM/GBM.
+Raspberry Pi 4, at the moment of writing this, has a limited KMS driver, and a buggy "fake" kms driver. This is because the GPU is different from the previous ones. Instead of using the `vc` libraries, you will need to use the DRM/GBM.
 
 **What do I need?**
 
