@@ -24,6 +24,7 @@ struct gbm_device *gbmDevice;
 struct gbm_surface *gbmSurface;
 drmModeCrtc *crtc;
 uint32_t connectorId;
+static const char *eglGetErrorStr(); // moved to bottom
 
 static drmModeConnector *getConnector(drmModeRes *resources)
 {
@@ -42,56 +43,16 @@ static drmModeConnector *getConnector(drmModeRes *resources)
 
 static drmModeEncoder *findEncoder(drmModeConnector *connector)
 {
-    if (connector->encoder_id)
+if (connector->encoder_id)
     {
         return drmModeGetEncoder(device, connector->encoder_id);
     }
     return NULL;
 }
 
-static int getDisplay(EGLDisplay *display)
-{
-    drmModeRes *resources = drmModeGetResources(device);
-    if (resources == NULL)
-    {
-        fprintf(stderr, "Unable to get DRM resources\n");
-        return -1;
-    }
-
-    drmModeConnector *connector = getConnector(resources);
-    if (connector == NULL)
-    {
-        fprintf(stderr, "Unable to get connector\n");
-        drmModeFreeResources(resources);
-        return -1;
-    }
-
-    connectorId = connector->connector_id;
-    mode = connector->modes[0]; // array of resolutions and refresh rates supported by this display
-    printf("resolution: %ix%i\n", mode.hdisplay, mode.vdisplay);
-
-    drmModeEncoder *encoder = findEncoder(connector);
-    if (encoder == NULL)
-    {
-        fprintf(stderr, "Unable to get encoder\n");
-        drmModeFreeConnector(connector);
-        drmModeFreeResources(resources);
-        return -1;
-    }
-
-    crtc = drmModeGetCrtc(device, encoder->crtc_id);
-    drmModeFreeEncoder(encoder);
-    drmModeFreeConnector(connector);
-    drmModeFreeResources(resources);
-    gbmDevice = gbm_create_device(device);
-    gbmSurface = gbm_surface_create(gbmDevice, mode.hdisplay, mode.vdisplay, GBM_FORMAT_XRGB8888, GBM_BO_USE_SCANOUT | GBM_BO_USE_RENDERING);
-    *display = eglGetDisplay(gbmDevice);
-    return 0;
-}
-
 static int matchConfigToVisual(EGLDisplay display, EGLint visualId, EGLConfig *configs, int count)
 {
-    EGLint id;
+EGLint id;
     for (int i = 0; i < count; ++i)
     {
         if (!eglGetConfigAttrib(display, configs[i], EGL_NATIVE_VISUAL_ID, &id))
@@ -99,7 +60,7 @@ static int matchConfigToVisual(EGLDisplay display, EGLint visualId, EGLConfig *c
         if (id == visualId)
             return i;
     }
-    return -1;
+return -1;
 }
 
 static struct gbm_bo *previousBo = NULL;
@@ -177,79 +138,57 @@ static const char *vertexShaderCode = STRINGIFY(
 static const char *fragmentShaderCode =
     STRINGIFY(uniform vec4 color; void main() { gl_FragColor = vec4(color); });
 
-// Get the EGL error back as a string. Useful for debugging.
-static const char *eglGetErrorStr()
-{
-    switch (eglGetError())
-    {
-    case EGL_SUCCESS:
-        return "The last function succeeded without error.";
-    case EGL_NOT_INITIALIZED:
-        return "EGL is not initialized, or could not be initialized, for the "
-               "specified EGL display connection.";
-    case EGL_BAD_ACCESS:
-        return "EGL cannot access a requested resource (for example a context "
-               "is bound in another thread).";
-    case EGL_BAD_ALLOC:
-        return "EGL failed to allocate resources for the requested operation.";
-    case EGL_BAD_ATTRIBUTE:
-        return "An unrecognized attribute or attribute value was passed in the "
-               "attribute list.";
-    case EGL_BAD_CONTEXT:
-        return "An EGLContext argument does not name a valid EGL rendering "
-               "context.";
-    case EGL_BAD_CONFIG:
-        return "An EGLConfig argument does not name a valid EGL frame buffer "
-               "configuration.";
-    case EGL_BAD_CURRENT_SURFACE:
-        return "The current surface of the calling thread is a window, pixel "
-               "buffer or pixmap that is no longer valid.";
-    case EGL_BAD_DISPLAY:
-        return "An EGLDisplay argument does not name a valid EGL display "
-               "connection.";
-    case EGL_BAD_SURFACE:
-        return "An EGLSurface argument does not name a valid surface (window, "
-               "pixel buffer or pixmap) configured for GL rendering.";
-    case EGL_BAD_MATCH:
-        return "Arguments are inconsistent (for example, a valid context "
-               "requires buffers not supplied by a valid surface).";
-    case EGL_BAD_PARAMETER:
-        return "One or more argument values are invalid.";
-    case EGL_BAD_NATIVE_PIXMAP:
-        return "A NativePixmapType argument does not refer to a valid native "
-               "pixmap.";
-    case EGL_BAD_NATIVE_WINDOW:
-        return "A NativeWindowType argument does not refer to a valid native "
-               "window.";
-    case EGL_CONTEXT_LOST:
-        return "A power management event has occurred. The application must "
-               "destroy all contexts and reinitialise OpenGL ES state and "
-               "objects to continue rendering.";
-    default:
-        break;
-    }
-    return "Unknown error!";
-}
-
 int main()
 {
     EGLDisplay display;
+    drmModeRes *resources;
+    
     // we have to try card0 and card1 to see which is valid. fopen will work on both, so...
     device = open("/dev/dri/card0", O_RDWR | O_CLOEXEC);
     
-    if (drmModeGetResources(device) == NULL) // if we have the right device we can get it's resources
+    if ((resources = drmModeGetResources(device)) == NULL) // if we have the right device we can get it's resources
         {
-        printf("/dev/dri/card0 not supporting DRM, using card1, ");
+        printf("/dev/dri/card0 does not have DRM resources, using card1, ");
         device = open("/dev/dri/card1", O_RDWR | O_CLOEXEC); // if not, try the other one: (1)
+        resources = drmModeGetResources(device);
         }
-    else printf("using /dev/dri/card0, ");
-    
-    if (getDisplay(&display) != 0) // also tests drmModeGetResources
+    else
+      printf("using /dev/dri/card0, ");
+
+    if (resources == NULL)
+      { printf("Unable to get DRM resources on card1\n"); return -1;  }
+
+
+    drmModeConnector *connector = getConnector(resources);
+    if (connector == NULL)
     {
-        fprintf(stderr, "Unable to get EGL display\n");
-        close(device);
+        fprintf(stderr, "Unable to get connector\n");
+        drmModeFreeResources(resources);
         return -1;
     }
+
+    connectorId = connector->connector_id;
+    mode = connector->modes[0]; // array of resolutions and refresh rates supported by this display
+    printf("resolution: %ix%i\n", mode.hdisplay, mode.vdisplay);
+
+    drmModeEncoder *encoder = findEncoder(connector);
+    if (encoder == NULL)
+    {
+        fprintf(stderr, "Unable to get encoder\n");
+        drmModeFreeConnector(connector);
+        drmModeFreeResources(resources);
+        return -1;
+    }
+
+    crtc = drmModeGetCrtc(device, encoder->crtc_id);
+    drmModeFreeEncoder(encoder);
+    drmModeFreeConnector(connector);
+    drmModeFreeResources(resources);
+    gbmDevice = gbm_create_device(device);
+    gbmSurface = gbm_surface_create(gbmDevice, mode.hdisplay, mode.vdisplay, GBM_FORMAT_XRGB8888, GBM_BO_USE_SCANOUT | GBM_BO_USE_RENDERING);
+    display = eglGetDisplay(gbmDevice);
+
+    
 
     // We will use the screen resolution as the desired width and height for the viewport.
     int desiredWidth = mode.hdisplay;
@@ -403,4 +342,59 @@ int main()
 
     close(device);
     return EXIT_SUCCESS;
+}
+
+
+// Get the EGL error back as a string. Useful for debugging.
+static const char *eglGetErrorStr()
+{
+    switch (eglGetError())
+    {
+    case EGL_SUCCESS:
+        return "The last function succeeded without error.";
+    case EGL_NOT_INITIALIZED:
+        return "EGL is not initialized, or could not be initialized, for the "
+               "specified EGL display connection.";
+    case EGL_BAD_ACCESS:
+        return "EGL cannot access a requested resource (for example a context "
+               "is bound in another thread).";
+    case EGL_BAD_ALLOC:
+        return "EGL failed to allocate resources for the requested operation.";
+    case EGL_BAD_ATTRIBUTE:
+        return "An unrecognized attribute or attribute value was passed in the "
+               "attribute list.";
+    case EGL_BAD_CONTEXT:
+        return "An EGLContext argument does not name a valid EGL rendering "
+               "context.";
+    case EGL_BAD_CONFIG:
+        return "An EGLConfig argument does not name a valid EGL frame buffer "
+               "configuration.";
+    case EGL_BAD_CURRENT_SURFACE:
+        return "The current surface of the calling thread is a window, pixel "
+               "buffer or pixmap that is no longer valid.";
+    case EGL_BAD_DISPLAY:
+        return "An EGLDisplay argument does not name a valid EGL display "
+               "connection.";
+    case EGL_BAD_SURFACE:
+        return "An EGLSurface argument does not name a valid surface (window, "
+               "pixel buffer or pixmap) configured for GL rendering.";
+    case EGL_BAD_MATCH:
+        return "Arguments are inconsistent (for example, a valid context "
+               "requires buffers not supplied by a valid surface).";
+    case EGL_BAD_PARAMETER:
+        return "One or more argument values are invalid.";
+    case EGL_BAD_NATIVE_PIXMAP:
+        return "A NativePixmapType argument does not refer to a valid native "
+               "pixmap.";
+    case EGL_BAD_NATIVE_WINDOW:
+        return "A NativeWindowType argument does not refer to a valid native "
+               "window.";
+    case EGL_CONTEXT_LOST:
+        return "A power management event has occurred. The application must "
+               "destroy all contexts and reinitialise OpenGL ES state and "
+               "objects to continue rendering.";
+    default:
+        break;
+    }
+    return "Unknown error!";
 }
