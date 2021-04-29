@@ -1,8 +1,8 @@
 Whether by design or by oversight, it turns out the kms/drm driver architecture used in linux to set the current video mode allows easy selection of custom modes as well. You just stuff the values you want into the mode structure returned by getConnector, and then tell drm to use that mode. Because this is close to the metal you can't just say height, width, and refresh, but need to specify the full timing info like you would using xorg's modelines.
 
-This code takes a xorg compliant modeline and stuffs it into the proper fields of the mode structure. It has been tested on the raspberry pi 4. 
+This code takes a xorg compliant modeline and stuffs it into the proper fields of the mode structure. It has been tested on the raspberry pi 4. As a debugging tool, it can also dump the modelines of the modes detected by kms/linux for your monitor. 
 
-## Raspberry Pi 4
+**Raspberry Pi 4 note**
 
 The raspberry Pi 4, at the moment of writing this, has a limited KMS driver, and a buggy "fake" kms driver. This is because the GPU is different from the previous ones. Instead of using the `vc` libraries, you will need to use the DRM/GBM.
 
@@ -43,6 +43,7 @@ kmsmodeline 31 "13.514000 720 739 801 858 480 488 494 525 -hsync -vsync interlac
 You should see the following output:
 
 ```
+% kmsmodeline 31 
 /dev/dri/card0 does not have DRM resources, using card1
 720x480i-60.00hz(60): 13.514000 720 739 801 858 480 488 494 525 -hsync -vsync interlace dblclk
 Initialized EGL version: 1.4
