@@ -54,10 +54,11 @@ Initialized EGL version: 1.4
 
 The program will briefly show the following full screen:
 
-4 seconds of warming up the screen to wait for the monitor to finish switching modes
-60 frames of black white full screen flicker.
+* 4 seconds of warming up the screen to wait for the monitor to finish switching modes
 
-timing for each buffer flip, eg
+* 60 frames of black white full screen flicker.
+
+* timing for each buffer flip, eg
 ````
 16.69 ms        59.90 hz
 16.64 ms        60.10 hz
