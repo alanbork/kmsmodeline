@@ -1,4 +1,6 @@
-This is a simple example of doing graphics without X11 on the pi4. it is a simplied version of the well known triangle[_rpi4].c with some additional improvements for robustness. 
+Whether by design or by oversight, it turns out the kms/drm driver architecture used in linux to set the current video mode allows easy selection of custom modes as well. You just stuff the values you want into the mode structure returned by getConnector, and then tell drm to use that mode. Because this is close to the metal you can't just say height, width, and refresh, but need to specify the full timing info like you would using xorg's modelines.
+
+This code takes a xorg compliant modeline and stuffs it into the proper fields of the mode structure. It has been tested on the raspberry pi 4. 
 
 ## Raspberry Pi 4
 
@@ -24,30 +26,42 @@ hdmi_mode=81
 
 **How do I try it?**
 
-Copy or download the `triangle_rpi4.c` file onto your Raspberry Pi. Using any terminal, write the following commands to compile the source file:
+Copy or download the `kmsmodeline.c` file onto your Raspberry Pi. Using any terminal, write the following commands to compile the source file:
 
 ```
-gcc -o triangle_rpi4 triangle_rpi4.c -ldrm -lgbm -lEGL -lGLESv2 -I/usr/include/libdrm -I/usr/include/GLES2
+gcc -o kmsmodeline kmsmodeline.c -ldrm -lgbm -lEGL -lGLESv2 -I/usr/include/libdrm -I/usr/include/GLES2
 ```
 
 To run the executable, type the following:
 
 ```
-./triangle_rpi4
+kmsmodeline <mode number>
+kmsmodeline <mode number> "xorg modeline", eg:
+kmsmodeline 31 "13.514000 720 739 801 858 480 488 494 525 -hsync -vsync interlace dblclk"
 ```
 
 You should see the following output:
 
 ```
-/dev/dri/card0 not supporting DRM, trying card1, resolution: 3840x2160
+/dev/dri/card0 does not have DRM resources, using card1
+720x480i-60.00hz(60): 13.514000 720 739 801 858 480 488 494 525 -hsync -vsync interlace dblclk
 Initialized EGL version: 1.4
-GL Viewport size: 3840x2160
 
 ```
 
 The program will briefly show the following full screen:
 
-![Screenshot of a purple triangle](output.png "Screenshot of a purple triangle")
+4 seconds of warming up the screen to wait for the monitor to finish switching modes
+60 frames of black white full screen flicker.
+
+timing for each buffer flip, eg
+````
+16.69 ms        59.90 hz
+16.64 ms        60.10 hz
+16.69 ms        59.91 hz
+16.64 ms        60.10 hz
+[....]
+````
 
 
 ## Troubleshooting and Questions
