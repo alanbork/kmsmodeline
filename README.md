@@ -75,26 +75,6 @@ Your EGL might be faulty! Make sure you are using the libraries provided by Rasp
 
 Same as above.
 
-**How do I change the pixelbuffer resolution?**
-
-Find `pbufferAttribs` and change `EGL_WIDTH` and `EGL_HEIGHT`.
-
-**I get "undefined reference" on some gl functions!**
-
-Some GL functions may not come from GLES library. You may need to get GL1 library by executing `sudo apt-get install libgl1-mesa-dev` and then simply add: `-lGL` flag to the linker, so you get: `gcc -o triangle triangle.o -lbrcmEGL -lbrcmGLESv2 -lGL -L/opt/vc/lib`
-
-**How do I change the buffer sample size or the depth buffer size or the stencil size?**
-
-Find `configAttribs` at the top of the `triangle.c` file and modify the attributes you need. All config attributes are located here <https://www.khronos.org/registry/EGL/sdk/docs/man/html/eglChooseConfig.xhtml>
-
-**Can I use glBegin() and glEnd()?**
-
-You should not, but you can. However, it seems that OpenGL ES does not like that and nothing will be rendered. For this you will need to link the `GL` library as well. Simply, add `-lGL` to the gcc command.
-
-**Failed to add service - already in use?**
-
-As mentioned in [this issue](https://github.com/matusnovak/rpi-opengl-without-x/issues/1), you have to remove both `vc4-kms-v3d` and `vc4-fkms-v3d` from [R-Pi config](https://elinux.org/R-Pi_configuration_file). Also relevant discussion here: <https://stackoverflow.com/questions/40490113/eglfs-on-raspberry2-failed-to-add-service-already-in-use>. If you are using Raspberry Pi 4 (the `triangle_rpi4.c`) it might happen sometimes. I could not fully figure it out, but it might be due to incorrect EGL or DRM/GBM cleanup in  the code. I say "incorrect", but I don't know where. 
-
 ## License
 
 Do whatever you want.
