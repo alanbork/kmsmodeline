@@ -1,6 +1,6 @@
 Whether by design or by oversight, it turns out the kms/drm driver architecture used in linux to set the current video mode allows easy selection of custom modes as well. You just stuff the values you want into the mode structure returned by getConnector, and then tell drm to use that mode. Because this is close to the metal you can't just say height, width, and refresh, but need to specify the full timing info like you would using xorg's modelines.
 
-This code takes a xorg compliant modeline and stuffs it into the proper fields of the mode structure. It has been tested on the raspberry pi 4. As a debugging tool, it can also dump the modelines of the modes detected by kms/linux for your monitor. 
+This complete example, based on https://alantechreview.blogspot.com/2021/04/setting-custom-video-mode-using-drmkms.html, takes a xorg compliant modeline and stuffs it into the proper fields of the mode structure. It has been tested on the raspberry pi 4. As a debugging tool, it can also dump the modelines of the modes detected by kms/linux for your monitor. 
 
 **Raspberry Pi 4 note**
 
