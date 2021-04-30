@@ -10,10 +10,12 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <string.h>
 
 
 // The following code related to DRM/GBM was adapted from the following sources:
 // https://alantechreview.blogspot.com/2021/04/setting-custom-video-mode-using-drmkms.html
+// and
 // https://github.com/eyelash/tutorials/blob/master/drm-gbm.c
 // and
 // https://www.raspberrypi.org/forums/viewtopic.php?t=243707#p1499181
@@ -42,50 +44,50 @@ drmModeCrtc *crtc;
 uint32_t connectorId;
 static const char *eglGetErrorStr(); // moved to bottom
 
-static drmModeConnector *getConnector(drmModeRes *resources)
-{
+static drmModeConnector* getConnector(drmModeRes* resources)
+    {
     for (int i = 0; i < resources->count_connectors; i++)
-    {
-        drmModeConnector *connector = drmModeGetConnector(device, resources->connectors[i]);
-        if (connector->connection == DRM_MODE_CONNECTED)
         {
+        drmModeConnector* connector = drmModeGetConnector(device, resources->connectors[i]);
+        if (connector->connection == DRM_MODE_CONNECTED)
+            {
             return connector;
-        }
+            }
         drmModeFreeConnector(connector);
-    }
+        }
 
     return NULL;
-}
+    }
 
-static drmModeEncoder *findEncoder(drmModeConnector *connector)
-{
-if (connector->encoder_id)
+static drmModeEncoder* findEncoder(drmModeConnector* connector)
     {
+    if (connector->encoder_id)
+        {
         return drmModeGetEncoder(device, connector->encoder_id);
-    }
+        }
     return NULL;
-}
+    }
 
-static int matchConfigToVisual(EGLDisplay display, EGLint visualId, EGLConfig *configs, int count)
-{
-EGLint id;
-    for (int i = 0; i < count; ++i)
+static int matchConfigToVisual(EGLDisplay display, EGLint visualId, EGLConfig* configs, int count)
     {
+    EGLint id;
+    for (int i = 0; i < count; ++i)
+        {
         if (!eglGetConfigAttrib(display, configs[i], EGL_NATIVE_VISUAL_ID, &id))
             continue;
         if (id == visualId)
             return i;
+        }
+    return -1;
     }
-return -1;
-}
 
-static struct gbm_bo *previousBo = NULL;
+static struct gbm_bo* previousBo = NULL;
 static uint32_t previousFb;
 
-static void gbmSwapBuffers(EGLDisplay *display, EGLSurface *surface)
-{
+static void gbmSwapBuffers(EGLDisplay* display, EGLSurface* surface)
+    {
     eglSwapBuffers(*display, *surface);
-    struct gbm_bo *bo = gbm_surface_lock_front_buffer(gbmSurface);
+    struct gbm_bo* bo = gbm_surface_lock_front_buffer(gbmSurface);
     uint32_t handle = gbm_bo_get_handle(bo).u32;
     uint32_t pitch = gbm_bo_get_stride(bo);
     uint32_t fb;
@@ -93,36 +95,36 @@ static void gbmSwapBuffers(EGLDisplay *display, EGLSurface *surface)
     drmModeSetCrtc(device, crtc->crtc_id, fb, 0, 0, &connectorId, 1, mode);
 
     if (previousBo)
-    {
+        {
         drmModeRmFB(device, previousFb);
         gbm_surface_release_buffer(gbmSurface, previousBo);
-    }
+        }
     previousBo = bo;
     previousFb = fb;
-}
+    }
 
 // fill the screen with a specific grayscale
-static void draw (float progress) {
-
-glClearColor (progress, progress, progress, 1.0);
-glClear (GL_COLOR_BUFFER_BIT);
-}
+static void draw(float progress) 
+    {
+    glClearColor(progress, progress, progress, 1.0);
+    glClear(GL_COLOR_BUFFER_BIT);
+    }
 
 static void gbmClean()
-{
+    {
     // set the previous crtc
     drmModeSetCrtc(device, crtc->crtc_id, crtc->buffer_id, crtc->x, crtc->y, &connectorId, 1, &crtc->mode);
     drmModeFreeCrtc(crtc);
 
     if (previousBo)
-    {
+        {
         drmModeRmFB(device, previousFb);
         gbm_surface_release_buffer(gbmSurface, previousBo);
-    }
+        }
 
     gbm_surface_destroy(gbmSurface);
     gbm_device_destroy(gbmDevice);
-}
+    }
 
 // The following code was adopted from
 // https://github.com/matusnovak/rpi-opengl-without-x/blob/master/triangle.c
@@ -133,28 +135,26 @@ static const EGLint configAttribs[] = {
     EGL_BLUE_SIZE, 8,
     EGL_DEPTH_SIZE, 8,
     EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
-    EGL_NONE};
+    EGL_NONE };
 
 static const EGLint contextAttribs[] = {
     EGL_CONTEXT_CLIENT_VERSION, 2,
-    EGL_NONE};
-
+    EGL_NONE };
 
 // start of code for printing out mode in x86modeline syntax
+float drm_mode_vrefresh(drmModeModeInfo* mode)   // modded from drm_modes.c
+    {
+    float refresh = mode->clock * 1000.00 / (mode->htotal * mode->vtotal);
 
-float drm_mode_vrefresh(drmModeModeInfo *mode)   // modded from drm_modes.c
-{
-  float refresh = mode->clock * 1000.00	/ (mode->htotal * mode->vtotal);
+    if (mode->flags & DRM_MODE_FLAG_INTERLACE)
+        refresh *= 2;
+    if (mode->flags & DRM_MODE_FLAG_DBLSCAN)
+        refresh /= 2;
+    if (mode->vscan > 1)
+        refresh /= mode->vscan;
 
-		if (mode->flags & DRM_MODE_FLAG_INTERLACE)
-			refresh *= 2;
-		if (mode->flags & DRM_MODE_FLAG_DBLSCAN)
-			refresh /= 2;
-		if (mode->vscan > 1)
-			refresh /= mode->vscan;
-
-	return refresh;
-}
+    return refresh;
+    }
 
 // see https://www.kernel.org/doc/html/v4.8/gpu/drm-kms.html for flags,etc
 
@@ -205,82 +205,84 @@ static void dump_mode(drmModeModeInfo *mode)
 }
 
 // syntax: kmsmodeline [defined mode #] ["modeline"]
+// example: kmsmodeline 0 "13.500000 720 739 801 858 480 488 494 525 -hsync -vsync interlace dblclk
 
-int main(int argc, char * argv[])
+int main(int argc, char* argv[])
 {
-    EGLDisplay display;
-    drmModeRes *resources;
-    int desired_mode = 0;
-    int modenum;
-    
-    float warmup = getenvf("warmup", 4);
-    int samples = min(getenvf("samples", 60), 1000);
-    
+EGLDisplay display;
+drmModeRes* resources;
+int desired_mode = 0;
+int modenum;
+
+float warmup = getenvf("warmup", 4);
+int samples = min(getenvf("samples", 60), 1000);
+
 if (argc == 1)
-	{
-	modenum  = 0;
-	printf("defaulting to mode 0\n");
-	}
-else
-	modenum  = atoi(argv[1]);
-   
-    // we have to try card0 and card1 to see which is valid. fopen will work on both, so...
-    device = open("/dev/dri/card0", O_RDWR | O_CLOEXEC);
-    
-    if ((resources = drmModeGetResources(device)) == NULL) // if we have the right device we can get it's resources
-        {
-        printf("/dev/dri/card0 does not have DRM resources, using card1\n");
-        device = open("/dev/dri/card1", O_RDWR | O_CLOEXEC); // if not, try the other one: (1)
-        resources = drmModeGetResources(device);
-        }
-    else
-      printf("using /dev/dri/card0\n");
-
-    if (resources == NULL)
-      { printf("Unable to get DRM resources on card1\n"); return -1;  }
-
-    drmModeConnector *connector = getConnector(resources);
-    if (connector == NULL)
     {
-        fprintf(stderr, "Unable to get connector\n");
-        drmModeFreeResources(resources);
-        return -1;
+    modenum = 0;
+    printf("defaulting to mode 0\n");
+    }
+else
+    modenum = atoi(argv[1]);
+
+// we have to try card0 and card1 to see which is valid. fopen will work on both, so...
+device = open("/dev/dri/card0", O_RDWR | O_CLOEXEC);
+
+if ((resources = drmModeGetResources(device)) == NULL) // if we have the right device we can get it's resources
+    {
+    printf("/dev/dri/card0 does not have DRM resources, using card1\n");
+    device = open("/dev/dri/card1", O_RDWR | O_CLOEXEC); // if not, try the other one: (1)
+    resources = drmModeGetResources(device);
+    }
+else
+    printf("using /dev/dri/card0\n");
+
+if (resources == NULL)
+    {
+    printf("Unable to get DRM resources on card1\n"); return -1;
     }
 
-    connectorId = connector->connector_id;
+drmModeConnector* connector = getConnector(resources);
+if (connector == NULL)
+    {
+    fprintf(stderr, "Unable to get connector\n");
+    drmModeFreeResources(resources);
+    return -1;
+    }
 
-    // choose a mode (resolution + refresh rate)
+connectorId = connector->connector_id;
 
-    mode_info = connector->modes[modenum]; // array of resolutions and refresh rates supported by this display; save to a local mode_info so we can clear the resources later
-    mode = &mode_info;
-    dump_mode(mode);
+// choose a mode (resolution + refresh rate)
 
-  if (argc == 3)
+mode_info = connector->modes[modenum]; // array of resolutions and refresh rates supported by this display; save to a local mode_info so we can clear the resources later
+mode = &mode_info;
+dump_mode(mode);
+
+if (argc == 3)
     {
     mode->type = DRM_MODE_TYPE_USERDEF;
 
-     char flags[5][16] = {0,0,0,0,0};;
-	   float fclock;
-// example: 13.514 720 739 801 858 480 488 494 525 -hsync -vsync interlace doublescan
-    	sscanf(argv[2], "%f %hd %hd %hd %hd %hd %hd %hd %hd %15s %15s %15s %15s",
-		   &fclock,
-		   &mode->hdisplay,
-		   &mode->hsync_start,
-		   &mode->hsync_end,
-		   &mode->htotal,
-		   &mode->vdisplay,
-		   &mode->vsync_start,
-		   &mode->vsync_end,
-		   &mode->vtotal, flags[0], flags[1], flags[2], flags[3], flags[4]);
-		   
-		   	mode->clock = fclock * 1000;
-//        mode->vrefresh = mode->clock * 1000.0 		/ mode->htotal / mode->vtotal; // can't calc here
+    char flags[5][16] = {0,0,0,0,0};;
+    float fclock;
+    // example: 13.514 720 739 801 858 480 488 494 525 -hsync -vsync interlace dblclk
+    sscanf(argv[2], "%f %hd %hd %hd %hd %hd %hd %hd %hd %15s %15s %15s %15s %15s",
+        &fclock,
+        &mode->hdisplay,
+        &mode->hsync_start,
+        &mode->hsync_end,
+        &mode->htotal,
+        &mode->vdisplay,
+        &mode->vsync_start,
+        &mode->vsync_end,
+        &mode->vtotal, flags[0], flags[1], flags[2], flags[3], flags[4]);
+        
+    mode->clock = fclock * 1000;
+    mode->flags = 0;
+    // calcualte vrefresh later
 
-         mode->flags = 0;
-
-for (int f = 0; f < 4; f++)  // this could use the array that's used to dump the flags
-	{
-	if (strcasecmp(flags[f], "+hsync") == 0)
+    for (int f = 0; f < 4; f++)  // this could use the array that's used to dump the flags
+    {
+    if (strcasecmp(flags[f], "+hsync") == 0)
                 mode->flags |= DRM_MODE_FLAG_PHSYNC;
         if (strcasecmp(flags[f], "-hsync") == 0)
                 mode->flags |= DRM_MODE_FLAG_NHSYNC;
@@ -293,26 +295,26 @@ for (int f = 0; f < 4; f++)  // this could use the array that's used to dump the
         if (strcasecmp(flags[f], "interlace") == 0)
                 mode->flags |= DRM_MODE_FLAG_INTERLACE;
 
-	 if (strcasecmp(flags[f], "dblclk") == 0)
+        if (strcasecmp(flags[f], "dblclk") == 0)
                 mode->flags |= DRM_MODE_FLAG_DBLCLK;
 
-	// printf("flag %i\n", mode->flags); debugging, is it finding the flags properly?
-	}
+    // printf("flag %i\n", mode->flags); debugging, is it finding the flags properly?
+    }
 
-  mode->vrefresh = .49 + drm_mode_vrefresh(mode); // looks like this is just for display, since it's an integer it's not used for any real display calculations
-	
-		snprintf(mode->name, sizeof(mode->name),"%dx%d%c", // "%dx%d%c@%1.2f", // if you want refresh info
-		mode->hdisplay, mode->vdisplay,
-    (mode->flags & DRM_MODE_FLAG_INTERLACE ? 'i':0)); // , drm_mode_vrefresh(mode));
-dump_mode(mode);
+    mode->vrefresh = .49 + drm_mode_vrefresh(mode); // looks like this is just for human consumption, since it's an integer it's not used for any real display calculations
 
-}
+    snprintf(mode->name, sizeof(mode->name),"%dx%d%c", // "%dx%d%c@%1.2f", // if you want refresh info
+        mode->hdisplay, mode->vdisplay,
+        (mode->flags & DRM_MODE_FLAG_INTERLACE ? 'i':0)); // , drm_mode_vrefresh(mode));
+    dump_mode(mode);
+
+    }
 else if (argc > 3)
-  printf("wrong number of args, did you forget the quotes around modeline?\n");
+        printf("wrong number of args, did you forget the quotes around modeline?\n");
 
-      
-//    printf("resolution: %ix%i\n", mode.hdisplay, mode.vdisplay);
+  //    printf("resolution: %ix%i\n", mode.hdisplay, mode.vdisplay);
 
+    // done selecting/calcualting mode, start intialzing kms/drm/egl
     drmModeEncoder *encoder = findEncoder(connector);
     if (encoder == NULL)
     {
@@ -380,23 +382,19 @@ else if (argc > 3)
         return EXIT_FAILURE;
     }
 
-    EGLContext context =
-        eglCreateContext(display, configs[configIndex], EGL_NO_CONTEXT, contextAttribs);
+    EGLContext context = eglCreateContext(display, configs[configIndex], EGL_NO_CONTEXT, contextAttribs);
     if (context == EGL_NO_CONTEXT)
     {
-        fprintf(stderr, "Failed to create EGL context! Error: %s\n",
-                eglGetErrorStr());
+        fprintf(stderr, "Failed to create EGL context! Error: %s\n",   eglGetErrorStr());
         eglTerminate(display);
         gbmClean();
         return EXIT_FAILURE;
     }
 
-    EGLSurface surface =
-        eglCreateWindowSurface(display, configs[configIndex], gbmSurface, NULL);
+    EGLSurface surface = eglCreateWindowSurface(display, configs[configIndex], gbmSurface, NULL);
     if (surface == EGL_NO_SURFACE)
     {
-        fprintf(stderr, "Failed to create EGL surface! Error: %s\n",
-                eglGetErrorStr());
+        fprintf(stderr, "Failed to create EGL surface! Error: %s\n",   eglGetErrorStr());
         eglDestroyContext(display, context);
         eglTerminate(display);
         gbmClean();
