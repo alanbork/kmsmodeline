@@ -66,7 +66,7 @@ The program will briefly show the following full screen:
 16.64 ms        60.10 hz
 [....]
 ````
-
+(note that buffer flips can but need not be tied to vsync. if vsync is what you need this is probably the only proper way to go: https://github.com/dvdhrm/docs/blob/master/drm-howto/modeset-vsync.c)
 
 ## Troubleshooting and Questions
 
