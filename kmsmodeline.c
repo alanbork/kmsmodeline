@@ -211,17 +211,14 @@ int main(int argc, char* argv[])
 {
 EGLDisplay display;
 drmModeRes* resources;
-int desired_mode = 0;
-int modenum;
+int modenum = 0;
 
-float warmup = getenvf("warmup", 4);
-int samples = min(getenvf("samples", 60), 1000);
+// defaults settable via enviroment, eg export warmup=4
+float warmup = getenvf("warmup", 1); // in seconds
+int samples = min(getenvf("samples", 60), 1000); // count, 60 = 1 second for 60hz.
 
 if (argc == 1)
-    {
-    modenum = 0;
-    printf("defaulting to mode 0\n");
-    }
+    printf("defaulting to graphics mode 0\n");
 else
     modenum = atoi(argv[1]);
 
