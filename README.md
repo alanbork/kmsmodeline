@@ -6,7 +6,7 @@ disclaimer: there may well be more proper ways to do this, I haven't read the do
 
 **Raspberry Pi 4 note**
 
-The raspberry Pi 4, at the moment of writing this, has a limited KMS driver, and a buggy "fake" kms driver. This is because the GPU is different from the previous ones. Instead of using the `vc` libraries, you will need to use the DRM/GBM.
+This code works with the FKMS and KMS drivers on the raspberry Pi (4). At the moment of writing this the pi4 has a limited KMS driver, and a buggy "fake" kms driver. This is because the GPU is different from the previous ones. Instead of using the `vc` libraries, you will need to use the DRM/GBM libraries which is what this code does.
 
 **What do I need?**
 
