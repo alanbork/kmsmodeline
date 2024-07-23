@@ -13,7 +13,7 @@ This code works with the FKMS and KMS drivers on the raspberry Pi (4). At the mo
 You need a GCC compiler, GDM, EGL, and GLES libraries. The GCC compiler is already included in the Raspbian image. To install the other libraries, simply run:
 
 ```bash
-sudo apt-get install libegl1-mesa-dev libgbm-dev libgles2-mesa-dev
+sudo apt-get install libegl1-mesa-dev libgbm-dev libgles2-mesa-dev libdrm-dev
 ```
 
 You will also need to connect your Raspberry Pi to a screen. The boot config from `/boot/config.txt` that I have used for my tests, if it helps in any way:
